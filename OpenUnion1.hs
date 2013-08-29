@@ -1,6 +1,6 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE RankNTypes, ScopedTypeVariables,KindSignatures #-}
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, FlexibleContexts #-}
 {-# LANGUAGE OverlappingInstances #-}
 -- Only for MemberU below, when emulating Monad Transformers
@@ -11,8 +11,8 @@
 -- (or closed type function overlapping soon to be added to GHC)
 
 module OpenUnion1 (Union, inj, prj, decomp, 
-                   Member, MemberU, MemberU2, (:>), weaken
-                  ) where
+                   Member, MemberU, MemberU2, (:>), weaken,
+                  Without,hide) where
 
 import Data.Typeable
 import Zip
@@ -50,6 +50,20 @@ weaken (Union x) = Union x
 class Member (t :: * -> *) r
 instance Member t (t :> r)
 instance Member t r => Member t (t' :> r)
+
+
+class Member t r => Without r (t :: * -> *) r' where
+  hide :: t v-> Union r' v -> Union r v
+  
+instance (Typeable1 t, Functor t) => Without (t :> r) t r where
+  hide _ a = weaken a
+
+instance forall a r t r'. (Typeable1 a, Functor a, Without r t r',Typeable1 t, Functor t) => 
+     Without (a :> r) t (a :> r') where
+  hide _ = hid where
+   hid a = case decomp a of
+    Left x -> weaken $ (hide :: t v -> Union r' v -> Union r v)  undefined x
+    Right a -> inj a
 
 -- A sum data type, for `composing' effects
 -- In GHC 7.4, we should make it a list

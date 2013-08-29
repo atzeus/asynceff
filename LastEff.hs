@@ -51,6 +51,7 @@ processEffects :: Effects r a b -> a -> VE r b
 processEffects (viewl -> EmptyL)    a = return a
 processEffects (viewl -> ConsL h t) a = runVEC h a >>= processEffects t
 
+
 data VEC r a b = VEC { runVEC :: a -> VE r b }
 
 type Effects r a b = FunFT (VEC r) a b

@@ -9,6 +9,25 @@ import Data.Dynamic
 import Data.IntMap 
 import LastEff
 
+data ReadP n s v = forall a. ReadP (PRef n s a) (a -> v)
+  
+-- ignore forall'ed s type, not safe in general, but safe for our use here
+
+instance forall n s . Typeable n => Typeable1 (ReadP n s) where
+   typeOf1 _ = mkTyConApp tc [tg] where
+      tc = mkTyCon3 "effstuff" "PRef" "ReadP"
+      tg = typeOf (undefined :: n)
+
+instance Functor (ReadP n s) where
+  fmap f (ReadP p g) = ReadP p (f . g)
+
+
+runRo :: forall n s a r r'.(Typeable n ,Without r (PRefOp n s) r') => VE (ReadP n s :> r') a -> VE r a
+runRo (V a) = return a
+runRo (E e x) = case decomp e of
+     Right (ReadP r c) ->  readPR r >>= runRo . processEffects x . c
+     Left e -> send (hide (undefined :: PRefOp n s a) e) >>= runRo . processEffects x
+
 -- type level number for nesting depth
 
 data Z   deriving Typeable
@@ -30,13 +49,13 @@ instance Functor (PRefOp n s) where
   fmap f (Mod r a g) = Mod r a (f . g)
 
 createPR :: (Typeable a, Typeable n, Member (PRefOp n s) r) => a -> VE r (PRef n s a)
-createPR a = send (Create a id)
+createPR a = send (inj $ Create a id)
 
-readPR :: (Typeable a, Typeable n, Member (PRefOp n s) r) => PRef n s a -> VE r a
-readPR r = send (Read r id)
+readPR :: (Typeable n, Member (PRefOp n s) r) => PRef n s a -> VE r a
+readPR r = send (inj $ Read r id)
 
-modPR :: (Typeable a, Typeable n, Member (PRefOp n s) r) => PRef n s a -> a -> VE r ()
-modPR r a = send (Mod r a id)
+modPR :: (Typeable n, Member (PRefOp n s) r) => PRef n s a -> a -> VE r ()
+modPR r a = send (inj $ Mod r a id)
 
 
 -- ignore forall'ed s type, not safe in general, but safe for our use here
@@ -56,6 +75,7 @@ rPref v = handPRef' empyEnv v where
   handPref s (Read r f) = handPRef' s $  f $ prefGet r s
   handPref s (Mod r a f) = handPRef' s' $  f ()
              where s' = prefPut r a s
+
 
 
 
