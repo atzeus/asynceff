@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ChoregraphePositionLibrary xmlns="http://www.aldebaran-robotics.com/schema/choregraphe/position.xsd">
+    <position>
+        <version>2</version>
+        <name>new position</name>
+        <description></description>
+        <bitmap></bitmap>
+    </position>
+</ChoregraphePositionLibrary>
